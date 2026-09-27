@@ -4936,6 +4936,86 @@ function getRouteDestination(){
     .replace(/\b\w/g, char => char.toUpperCase());
 }
 
+function mapSerpApiHotel(h, index, { idPrefix, city }){
+  return {
+    id: `${idPrefix}-${index}`,
+    hotelCode: null,
+    name: h.name,
+    neighborhood: "",
+    kind: "Hotel",
+
+    lat: Number(h.coordinates?.latitude),
+    lng: Number(h.coordinates?.longitude),
+
+    yearBuilt: null,
+
+    images: Array.isArray(h.photos) ? h.photos : [],
+    thumbnailImages: Array.isArray(h.thumbnails) ? h.thumbnails : [],
+    heroImage: Array.isArray(h.photos) && h.photos.length
+      ? h.photos[0]
+      : null,
+    cardImage: Array.isArray(h.thumbnails) && h.thumbnails.length
+      ? h.thumbnails[0]
+      : null,
+    address: null,
+    city,
+    country: null,
+    category: null,
+    description: h.description || null,
+
+    compositeScore: h.rating != null
+      ? Math.round((h.rating / 5) * 100)
+      : null,
+
+    price: {
+      currency: h.currency || "USD",
+      low: Number(h.price || 0),
+      typical: Number(h.price || 0)
+    },
+
+    ratings: h.rating != null
+      ? [["Google", h.rating, 5, h.reviewCount || 0]]
+      : [],
+
+    amenities: {
+      pool: { present: (h.amenities || []).some(a => /pool/i.test(a)), confidence: "reported" },
+      gym: { present: (h.amenities || []).some(a => /gym|fitness/i.test(a)), confidence: "reported" },
+      air_conditioning: { present: (h.amenities || []).some(a => /air conditioning/i.test(a)), confidence: "reported" },
+      parking_free: { present: (h.amenities || []).some(a => /parking/i.test(a) && !/\(\$\)/.test(a)), confidence: "reported" },
+      wifi_free: { present: (h.amenities || []).some(a => /free wi-?fi/i.test(a)), confidence: "reported" },
+      breakfast_included: { present: (h.amenities || []).some(a => /breakfast/i.test(a) && !/\(\$\)/.test(a)), confidence: "reported" },
+      restaurant: { present: (h.amenities || []).some(a => /restaurant/i.test(a)), confidence: "reported" },
+      bar: { present: (h.amenities || []).some(a => /bar/i.test(a)), confidence: "reported" },
+      kid_friendly: { present: (h.amenities || []).some(a => /kid-friendly|kids? welcome|child-friendly/i.test(a)), confidence: "reported" },
+      accessible: { present: (h.amenities || []).some(a => /accessible|wheelchair/i.test(a)), confidence: "reported" }
+    },
+
+    signals: {
+      reviewSentiment: h.reviewSentiment || []
+    },
+
+    rooms: [],
+
+    hasFamilyRoom: false,
+    hasFamilyRoomLimited: false,
+    dataCompleteness: 0.6,
+    liveMatch: null,
+    matchRank: null,
+    configuration: null,
+    breakfastIncluded: null,
+    board: null,
+    totalStayPrice: h.totalPrice || null,
+    pricePerNight: h.price || null,
+    rateKey: null,
+    bookable: false,
+    allotment: null,
+    cancellationPolicies: [],
+    checkInTime: h.checkInTime || null,
+    checkOutTime: h.checkOutTime || null,
+    featuredCity: h.featuredCity || null
+  };
+}
+
 const routeDestination = getRouteDestination();
 
 if(routeDestination){
@@ -4980,82 +5060,9 @@ nlSearch.addEventListener("keydown", async (event)=>{
     state.liveApiResults = true;
 
     if(Array.isArray(data.hotels)){
-      const liveHotels = data.hotels.map((h, index) => ({
-        id: `live-serpapi-${index}`,
-        hotelCode: null,
-        name: h.name,
-        neighborhood: "",
-        kind: "Hotel",
-
-        lat: Number(h.coordinates?.latitude),
-        lng: Number(h.coordinates?.longitude),
-
-        yearBuilt: null,
-
-        images: Array.isArray(h.photos) ? h.photos : [],
-        thumbnailImages: Array.isArray(h.thumbnails) ? h.thumbnails : [],
-        heroImage: Array.isArray(h.photos) && h.photos.length
-          ? h.photos[0]
-          : null,
-        cardImage: Array.isArray(h.thumbnails) && h.thumbnails.length
-          ? h.thumbnails[0]
-          : null,
-        address: null,
-        city: searchDestination,
-        country: null,
-        category: null,
-        description: h.description || null,
-
-        compositeScore: h.rating != null
-          ? Math.round((h.rating / 5) * 100)
-          : null,
-
-        price: {
-          currency: h.currency || "USD",
-          low: Number(h.price || 0),
-          typical: Number(h.price || 0)
-        },
-
-        ratings: h.rating != null
-          ? [["Google", h.rating, 5, h.reviewCount || 0]]
-          : [],
-
-        amenities: {
-          pool: { present: (h.amenities || []).some(a => /pool/i.test(a)), confidence: "reported" },
-          gym: { present: (h.amenities || []).some(a => /gym|fitness/i.test(a)), confidence: "reported" },
-          air_conditioning: { present: (h.amenities || []).some(a => /air conditioning/i.test(a)), confidence: "reported" },
-          parking_free: { present: (h.amenities || []).some(a => /parking/i.test(a) && !/\(\$\)/.test(a)), confidence: "reported" },
-          wifi_free: { present: (h.amenities || []).some(a => /free wi-?fi/i.test(a)), confidence: "reported" },
-          breakfast_included: { present: (h.amenities || []).some(a => /breakfast/i.test(a) && !/\(\$\)/.test(a)), confidence: "reported" },
-          restaurant: { present: (h.amenities || []).some(a => /restaurant/i.test(a)), confidence: "reported" },
-          bar: { present: (h.amenities || []).some(a => /bar/i.test(a)), confidence: "reported" },
-          kid_friendly: { present: (h.amenities || []).some(a => /kid-friendly|kids? welcome|child-friendly/i.test(a)), confidence: "reported" },
-          accessible: { present: (h.amenities || []).some(a => /accessible|wheelchair/i.test(a)), confidence: "reported" }
-        },
-
-        signals: {
-          reviewSentiment: h.reviewSentiment || []
-        },
-
-        rooms: [],
-
-        hasFamilyRoom: false,
-        hasFamilyRoomLimited: false,
-        dataCompleteness: 0.6,
-        liveMatch: null,
-        matchRank: null,
-        configuration: null,
-        breakfastIncluded: null,
-        board: null,
-        totalStayPrice: h.totalPrice || null,
-        pricePerNight: h.price || null,
-        rateKey: null,
-        bookable: false,
-        allotment: null,
-        cancellationPolicies: [],
-        checkInTime: h.checkInTime || null,
-        checkOutTime: h.checkOutTime || null
-      }));
+      const liveHotels = data.hotels.map((h, index) =>
+        mapSerpApiHotel(h, index, { idPrefix: "live-serpapi", city: searchDestination })
+      );
 
       HOTELS.splice(0, HOTELS.length, ...liveHotels);
       updateFilterCapabilities();
@@ -5289,67 +5296,9 @@ async function loadFeaturedHotels(){
     const data = await response.json();
 
     if(Array.isArray(data.hotels)){
-      const featuredHotels = data.hotels.map((h, index) => ({
-        id: `featured-serpapi-${index}`,
-        hotelCode: null,
-        name: h.name,
-        neighborhood: "",
-        kind: "Hotel",
-        lat: Number(h.coordinates?.latitude),
-        lng: Number(h.coordinates?.longitude),
-        yearBuilt: null,
-        images: Array.isArray(h.photos) ? h.photos : [],
-        thumbnailImages: Array.isArray(h.thumbnails) ? h.thumbnails : [],
-        heroImage: Array.isArray(h.photos) && h.photos.length ? h.photos[0] : null,
-        cardImage: Array.isArray(h.thumbnails) && h.thumbnails.length ? h.thumbnails[0] : null,
-        address: null,
-        city: h.featuredCity || null,
-        country: null,
-        category: null,
-        description: h.description || null,
-        compositeScore: h.rating != null ? Math.round((h.rating / 5) * 100) : null,
-        price: {
-          currency: h.currency || "USD",
-          low: Number(h.price || 0),
-          typical: Number(h.price || 0)
-        },
-        ratings: h.rating != null
-          ? [["Google", h.rating, 5, h.reviewCount || 0]]
-          : [],
-        amenities: {
-          pool: { present: (h.amenities || []).some(a => /pool/i.test(a)), confidence: "reported" },
-          gym: { present: (h.amenities || []).some(a => /gym|fitness/i.test(a)), confidence: "reported" },
-          air_conditioning: { present: (h.amenities || []).some(a => /air conditioning/i.test(a)), confidence: "reported" },
-          parking_free: { present: (h.amenities || []).some(a => /parking/i.test(a) && !/\(\$\)/.test(a)), confidence: "reported" },
-          wifi_free: { present: (h.amenities || []).some(a => /free wi-?fi/i.test(a)), confidence: "reported" },
-          breakfast_included: { present: (h.amenities || []).some(a => /breakfast/i.test(a) && !/\(\$\)/.test(a)), confidence: "reported" },
-          restaurant: { present: (h.amenities || []).some(a => /restaurant/i.test(a)), confidence: "reported" },
-          bar: { present: (h.amenities || []).some(a => /bar/i.test(a)), confidence: "reported" },
-          kid_friendly: { present: (h.amenities || []).some(a => /kid-friendly|kids? welcome|child-friendly/i.test(a)), confidence: "reported" },
-          accessible: { present: (h.amenities || []).some(a => /accessible|wheelchair/i.test(a)), confidence: "reported" }
-        },
-        signals: {
-          reviewSentiment: h.reviewSentiment || []
-        },
-        rooms: [],
-        hasFamilyRoom: false,
-        hasFamilyRoomLimited: false,
-        dataCompleteness: 0.6,
-        liveMatch: null,
-        matchRank: null,
-        configuration: null,
-        breakfastIncluded: null,
-        board: null,
-        totalStayPrice: h.totalPrice || null,
-        pricePerNight: h.price || null,
-        rateKey: null,
-        bookable: false,
-        allotment: null,
-        cancellationPolicies: [],
-        checkInTime: h.checkInTime || null,
-        checkOutTime: h.checkOutTime || null,
-        featuredCity: h.featuredCity || null
-      }));
+      const featuredHotels = data.hotels.map((h, index) =>
+        mapSerpApiHotel(h, index, { idPrefix: "featured-serpapi", city: h.featuredCity || null })
+      );
 
       HOTELS.splice(0, HOTELS.length, ...featuredHotels);
       updateFilterCapabilities();
